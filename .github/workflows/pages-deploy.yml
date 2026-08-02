@@ -42,9 +42,34 @@ jobs:
           ruby-version: "3.3"
           bundler-cache: true
 
+      # Troca a origem de publicação de "Deploy from a branch" para
+      # "GitHub Actions" e grava o domínio personalizado — tudo pelo
+      # GITHUB_TOKEN efêmero do runner, sem token pessoal e sem
+      # configuração manual no painel.
+      - name: Preparar o Pages (origem e domínio)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          dominio=""
+          [[ -f CNAME ]] && dominio="$(tr -d '[:space:]' < CNAME)"
+          echo "Domínio: ${dominio:-(nenhum)}"
+
+          # Se o Pages ainda não existir, cria; se existir, atualiza.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages" \
+              -f "build_type=workflow" ${dominio:+-f "cname=${dominio}"} || true
+          else
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" \
+              -f "build_type=workflow" ${dominio:+-f "cname=${dominio}"} || true
+          fi
+          echo "Origem de publicação definida como GitHub Actions."
+
       - name: Configurar Pages
         id: pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Build
         run: bundle exec jekyll b -d "_site"
@@ -74,3 +99,18 @@ jobs:
       - name: Publicar
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Exigir HTTPS quando o certificado sair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 20); do
+            if gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" \
+                 -F "https_enforced=true" >/dev/null 2>&1; then
+              echo "HTTPS obrigatório ativado."; exit 0
+            fi
+            echo "Certificado ainda sendo emitido (tentativa $i)..."
+            sleep 30
+          done
+          echo "::warning::HTTPS ainda não pôde ser exigido; rode o workflow" \
+               "novamente mais tarde."
