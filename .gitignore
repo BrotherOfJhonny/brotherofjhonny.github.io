@@ -1,0 +1,31 @@
+# --------------------------------------------------------------- segredos
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+token.txt
+github-token.txt
+passwords.txt
+.netrc
+.npmrc
+
+# ----------------------------------------------------------------- Jekyll
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+vendor/
+
+# ---------------------------------------------------------------- sistema
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+*.tmp
+*~

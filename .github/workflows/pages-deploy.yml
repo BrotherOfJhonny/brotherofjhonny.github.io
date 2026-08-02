@@ -1,0 +1,76 @@
+name: "Build e Deploy"
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - .gitignore
+      - README.md
+      - LICENSE
+      - SECURITY.md
+  workflow_dispatch:
+
+# ---------------------------------------------------------------------------
+# Princípio do menor privilégio.
+# `contents: read` impede que o workflow altere o repositório; `pages` e
+# `id-token` são o mínimo para publicar via GitHub Pages. Nunca use
+# `permissions: write-all`.
+# ---------------------------------------------------------------------------
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez; não cancela a que já está em andamento.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # necessário para lastmod do sitemap
+          persist-credentials: false   # não deixa o token do CI no .git
+
+      - name: Configurar Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Configurar Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build
+        run: bundle exec jekyll b -d "_site"
+        env:
+          JEKYLL_ENV: "production"
+
+      - name: Verificar links e HTML
+        run: |
+          bundle exec htmlproofer _site \
+            --disable-external \
+            --allow-hash-href \
+            --ignore-empty-alt \
+            --no-enforce-https
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
