@@ -1,0 +1,78 @@
+name: "Verificação semanal"
+
+# Roda toda segunda-feira às 09:00 UTC (06:00 em Brasília) e abre uma issue
+# se algo regrediu. Existe por causa de um caso real: ao ligar o proxy do
+# Cloudflare, a plataforma passou a injetar um script de terceiros nas
+# páginas sem aviso nenhum, e só foi descoberto por acaso.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+# Menor privilégio: ler o repositório e escrever issues. Nada além disso.
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: "verificacao-semanal"
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Instalar whois
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq whois
+
+      - name: Executar a verificação
+        id: verif
+        run: |
+          set +e
+          ./scripts/verificacao-semanal.sh > relatorio.md 2>&1
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          cat relatorio.md
+        continue-on-error: true
+
+      - name: Abrir ou atualizar a issue quando houver falha
+        if: steps.verif.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          hoje="$(date -u '+%Y-%m-%d')"
+          titulo="Verificação semanal encontrou regressões"
+
+          # Reaproveita a issue aberta, se houver, para não virar enxurrada.
+          numero="$(gh issue list --state open --search "$titulo in:title" \
+                     --json number --jq '.[0].number // empty' || true)"
+
+          {
+            echo "Relatório de $hoje."
+            echo
+            cat relatorio.md
+            echo
+            echo "---"
+            echo "Gerado por \`.github/workflows/verificacao-semanal.yml\`."
+            echo "Para rodar localmente: \`./scripts/verificacao-semanal.sh\`"
+          } > corpo.md
+
+          if [[ -n "$numero" ]]; then
+            gh issue comment "$numero" --body-file corpo.md
+            echo "Comentário adicionado à issue #$numero."
+          else
+            gh issue create --title "$titulo" --body-file corpo.md
+            echo "Nova issue criada."
+          fi
+
+      - name: Falhar o job se houve regressão
+        if: steps.verif.outputs.status != '0'
+        run: |
+          echo "::error::A verificação semanal encontrou regressões. Veja a issue aberta."
+          exit 1
