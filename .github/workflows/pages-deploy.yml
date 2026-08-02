@@ -1,0 +1,116 @@
+name: "Build e Deploy"
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - .gitignore
+      - README.md
+      - LICENSE
+      - SECURITY.md
+  workflow_dispatch:
+
+# ---------------------------------------------------------------------------
+# Princípio do menor privilégio.
+# `contents: read` impede que o workflow altere o repositório; `pages` e
+# `id-token` são o mínimo para publicar via GitHub Pages. Nunca use
+# `permissions: write-all`.
+# ---------------------------------------------------------------------------
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Uma publicação por vez; não cancela a que já está em andamento.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # necessário para lastmod do sitemap
+          persist-credentials: false   # não deixa o token do CI no .git
+
+      - name: Configurar Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      # Troca a origem de publicação de "Deploy from a branch" para
+      # "GitHub Actions" e grava o domínio personalizado — tudo pelo
+      # GITHUB_TOKEN efêmero do runner, sem token pessoal e sem
+      # configuração manual no painel.
+      - name: Preparar o Pages (origem e domínio)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          dominio=""
+          [[ -f CNAME ]] && dominio="$(tr -d '[:space:]' < CNAME)"
+          echo "Domínio: ${dominio:-(nenhum)}"
+
+          # Se o Pages ainda não existir, cria; se existir, atualiza.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages" \
+              -f "build_type=workflow" ${dominio:+-f "cname=${dominio}"} || true
+          else
+            gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" \
+              -f "build_type=workflow" ${dominio:+-f "cname=${dominio}"} || true
+          fi
+          echo "Origem de publicação definida como GitHub Actions."
+
+      - name: Configurar Pages
+        id: pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Build
+        run: bundle exec jekyll b -d "_site"
+        env:
+          JEKYLL_ENV: "production"
+
+      - name: Verificar links e HTML
+        run: |
+          bundle exec htmlproofer _site \
+            --disable-external \
+            --allow-hash-href \
+            --ignore-empty-alt \
+            --no-enforce-https
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Exigir HTTPS quando o certificado sair
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 20); do
+            if gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" \
+                 -F "https_enforced=true" >/dev/null 2>&1; then
+              echo "HTTPS obrigatório ativado."; exit 0
+            fi
+            echo "Certificado ainda sendo emitido (tentativa $i)..."
+            sleep 30
+          done
+          echo "::warning::HTTPS ainda não pôde ser exigido; rode o workflow" \
+               "novamente mais tarde."

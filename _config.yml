@@ -1,0 +1,143 @@
+theme: jekyll-theme-chirpy
+
+lang: pt-BR
+timezone: America/Sao_Paulo
+
+# ---------------------------------------------------------------------------
+# IMPORTANTE — a causa do bug de 3 anos:
+# `url` estava vazio (ou só definido no ambiente local), então o Jekyll
+# assumiu http://localhost:4000 e gravou esse endereço no sitemap.xml,
+# robots.txt, feed.xml, redirects.json e na tag <link rel="canonical"> de
+# TODOS os posts. Mantenha este valor preenchido e sem barra no final.
+# ---------------------------------------------------------------------------
+url: "https://dozeroaobasico.com.br"
+baseurl: ""
+
+title: BrotherOfJhonny
+tagline: Blog de cibersegurança e tecnologia da informação
+description: >-
+  Artigos sobre segurança ofensiva, pentest, OSINT, modelagem de ameaças
+  e ferramentas de segurança da informação.
+
+github:
+  username: BrotherOfJhonny
+
+social:
+  name: Brother Of Jhonny
+  email: ""
+  links:
+    - https://github.com/BrotherOfJhonny
+
+# Sem analytics e sem comentários de terceiros: nenhuma requisição sai
+# para fora do domínio. Se um dia forem ativados, revise a política de
+# privacidade e o SECURITY.md antes.
+analytics:
+  google:
+    id: ""
+  goatcounter:
+    id: ""
+  umami:
+    id: ""
+    domain: ""
+  matomo:
+    id: ""
+    domain: ""
+  cloudflare:
+    id: ""
+  fathom:
+    id: ""
+
+pageviews:
+  provider: ""
+
+comments:
+  provider: ""
+
+theme_mode: dark
+
+# Caminho base das imagens dos posts.
+img_cdn: ""
+avatar: /assets/img/profile/avatar.jpg
+
+toc: true
+
+# O site atual exibe os 9 posts numa página só (não havia /page2/).
+paginate: 10
+
+# ---------------------------------------------------------------------------
+# Jekyll
+# ---------------------------------------------------------------------------
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: highlight
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
+
+permalink: /posts/:title/
+
+# Coleção das abas da barra lateral (Categorias, Tags, Arquivo, Sobre).
+# Sem este bloco o Jekyll ignora _tabs/ e a barra fica só com "Home".
+collections:
+  tabs:
+    output: true
+    sort_by: order
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      comments: false
+      toc: true
+      permalink: /posts/:title/
+  - scope:
+      path: _drafts
+    values:
+      comments: false
+  - scope:
+      path: ""
+      type: tabs
+    values:
+      layout: page
+      permalink: /:title/
+
+sass:
+  style: compressed
+
+compress_html:
+  clippings: all
+  comments: all
+  endings: all
+  profile: false
+  blanklines: false
+  ignore:
+    envs: [development]
+
+exclude:
+  - "*.gem"
+  - "*.gemspec"
+  - docs
+  - tools
+  - README.md
+  - LICENSE
+  - SECURITY.md
+  - "*.config.js"
+  - package*.json
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+jekyll-archives:
+  enabled: [categories, tags]
+  layouts:
+    category: category
+    tag: tag
+  permalinks:
+    tag: /tags/:name/
+    category: /categories/:name/
