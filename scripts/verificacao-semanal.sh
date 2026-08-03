@@ -73,6 +73,9 @@ echo
 # ---------------------------------------------------------------------------
 echo "## 3. Cabeçalhos de segurança"
 echo
+# Idade mínima aceitável para o HSTS, em segundos (180 dias).
+HSTS_MINIMO=15552000
+
 verifica_cabecalhos() {
   local alvo="$1"; shift
   local esperados=("$@")
@@ -86,6 +89,19 @@ verifica_cabecalhos() {
     ok "\`$alvo\` com todos os ${#esperados[@]} cabeçalhos"
   else
     falha "\`$alvo\` sem: $(IFS=', '; echo "${ausentes[*]}")"
+  fi
+
+  # Presença não basta. Já aconteceu de o HSTS vir com max-age=0, que
+  # desativa a política e ainda manda o navegador esquecer a anterior.
+  # Um monitor que só conta cabeçalhos daria isso como aprovado.
+  if grep -q '^strict-transport-security:' <<< "$cab"; then
+    local idade
+    idade=$(grep '^strict-transport-security:' <<< "$cab" \
+            | grep -oE 'max-age=[0-9]+' | head -1 | cut -d= -f2)
+    idade="${idade:-0}"
+    if [[ "$idade" -lt "$HSTS_MINIMO" ]]; then
+      falha "\`$alvo\` com HSTS inócuo: \`max-age=$idade\` (mínimo esperado: $HSTS_MINIMO)"
+    fi
   fi
 }
 
