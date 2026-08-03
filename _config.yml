@@ -55,6 +55,20 @@ comments:
 
 theme_mode: dark
 
+# ---------------------------------------------------------------------------
+# Auto-hospedagem dos recursos do tema.
+#
+# Sem isto, o Chirpy carrega Bootstrap, Font Awesome, tocbot, glightbox,
+# dayjs e as fontes Lato/Source Sans direto do jsDelivr e do Google Fonts.
+# Isso entrega o IP de cada visitante a terceiros e impede uma CSP restrita.
+#
+# Os arquivos ficam em assets/lib/, baixados por scripts/baixar-assets.sh.
+# Rode o script de novo sempre que atualizar a versão do tema.
+# ---------------------------------------------------------------------------
+assets:
+  self_host:
+    enabled: true
+
 # Caminho base das imagens dos posts.
 img_cdn: ""
 avatar: /assets/img/profile/avatar.jpg

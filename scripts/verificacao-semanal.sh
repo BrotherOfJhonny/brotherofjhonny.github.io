@@ -170,6 +170,27 @@ fi
 echo
 
 # ---------------------------------------------------------------------------
+echo "## 8. Sincronia com o tema"
+echo
+# _includes/head.html e _includes/search-loader.html são cópias adaptadas do
+# tema Chirpy. Se a versão do tema mudar, essas cópias podem ficar defasadas
+# em silêncio, perdendo correções ou recursos novos.
+CHIRPY_SINCRONIZADO="7.6.0"
+if [[ -f Gemfile.lock ]]; then
+  instalada=$(grep -oE 'jekyll-theme-chirpy \(([0-9.]+)\)' Gemfile.lock \
+              | grep -oE '[0-9.]+' | head -1)
+  if [[ -z "$instalada" ]]; then
+    alerta "não foi possível ler a versão do tema no Gemfile.lock"
+  elif [[ "$instalada" != "$CHIRPY_SINCRONIZADO" ]]; then
+    alerta "tema em $instalada, mas os overrides foram feitos sobre $CHIRPY_SINCRONIZADO. Rode o \`diff\` indicado em \`_includes/head.html\` e rode \`scripts/baixar-assets.sh\`."
+  else
+    ok "overrides sincronizados com o tema $instalada"
+  fi
+else
+  alerta "Gemfile.lock não encontrado, sincronia do tema não verificada"
+fi
+echo
+
 echo "---"
 echo
 if [[ "$falhas" -gt 0 ]]; then
