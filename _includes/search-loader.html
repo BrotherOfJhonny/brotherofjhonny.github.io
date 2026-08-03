@@ -1,0 +1,13 @@
+{% comment %}
+  Sobrescreve o include do tema Chirpy.
+
+  O original emite a inicialização da busca como <script> inline, o que
+  obrigaria a CSP a permitir 'unsafe-inline' em script-src. Aqui apenas
+  apontamos para o arquivo externo /assets/js/search-init.js, gerado pelo
+  próprio Jekyll com os mesmos valores.
+
+  Ao atualizar o tema, confira se o original mudou:
+    vendor/bundle/ruby/*/gems/jekyll-theme-chirpy-*/_includes/search-loader.html
+{% endcomment %}
+
+<script defer src="{{ '/assets/js/search-init.js' | relative_url }}"></script>
